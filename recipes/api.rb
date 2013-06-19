@@ -74,9 +74,13 @@ template "/etc/glance/policy.json" do
   notifies :restart, "service[image-api]", :immediately
 end
 
-glance = node["openstack"]["image"]
-rabbit_server_role = glance["rabbit_server_chef_role"]
-rabbit_info = config_by_role rabbit_server_role, "queue"
+messaging_service_type = node["openstack"]["mq"]["service_type"]
+messaging_host = node["openstack"]["mq"]["host"]
+case messaging_service_type
+when "rabbitmq"
+  rabbit_info = node["openstack"]["mq"][messaging_service_type]
+  rabbit_password = service_password messaging_service_type
+end
 
 identity_endpoint = endpoint "identity-admin"
 auth_uri = ::URI.decode identity_endpoint.to_s
@@ -102,22 +106,22 @@ service_user = node["openstack"]["image"]["service_user"]
 #           swift_store_auth_version from the node attributes and use them to connect
 #           to the swift compatible API service running elsewhere - possibly
 #           Rackspace Cloud Files.
-if glance["api"]["swift_store_auth_address"].nil?
+if node["openstack"]["image"]["api"]["swift_store_auth_address"].nil?
   swift_store_auth_address = auth_uri
   swift_store_user="#{service_tenant_name}:#{service_user}"
   swift_user_tenant = nil
   swift_store_key = service_pass
   swift_store_auth_version=2
 else
-  swift_store_auth_address=glance["api"]["swift_store_auth_address"]
-  swift_user_tenant = glance["api"]["swift_user_tenant"]
-  swift_store_user=glance["api"]["swift_store_user"]
+  swift_store_auth_address = node["openstack"]["image"]["api"]["swift_store_auth_address"]
+  swift_user_tenant = node["openstack"]["image"]["api"]["swift_user_tenant"]
+  swift_store_user = node["openstack"]["image"]["api"]["swift_store_user"]
   swift_store_key = service_password swift_store_user
-  swift_store_auth_version=glance["api"]["swift_store_auth_version"]
+  swift_store_auth_version = node["openstack"]["image"]["api"]["swift_store_auth_version"]
 end
 
 # Only use the glance image cacher if we aren't using file for our backing store.
-if glance["api"]["default_store"]=="file"
+if node["openstack"]["image"]["api"]["default_store"] == "file"
   glance_flavor="keystone"
 else
   glance_flavor="keystone+cachemanagement"
@@ -140,10 +144,12 @@ template "/etc/glance/glance-api.conf" do
     :registry_ip_address => registry_endpoint.host,
     :registry_port => registry_endpoint.port,
     :sql_connection => sql_connection,
-    :rabbit_ipaddress => rabbit_info["host"],    #FIXME!
+    :messaging_host => messaging_host,
+    :rabbit_info => rabbit_info,
+    :rabbit_password => rabbit_password,
     :glance_flavor => glance_flavor,
-    "identity_endpoint" => identity_endpoint,
-    "service_pass" => service_pass,
+    :identity_endpoint => identity_endpoint,
+    :service_pass => service_pass,
     :swift_store_key => swift_store_key,
     :swift_user_tenant => swift_user_tenant,
     :swift_store_user => swift_store_user,

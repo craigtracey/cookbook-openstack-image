@@ -13,10 +13,6 @@ require "chefspec"
 }
 
 def image_stubs
-  ::Chef::Recipe.any_instance.stub(:config_by_role).
-    with("rabbitmq-server", "queue").and_return(
-      {'host' => 'rabbit-host', 'port' => 'rabbit-port'}
-    )
   ::Chef::Recipe.any_instance.stub(:secret).
     with("secrets", "openstack_identity_bootstrap_token").
     and_return "bootstrap-token"
@@ -24,6 +20,8 @@ def image_stubs
   ::Chef::Recipe.any_instance.stub(:user_password).and_return String.new
   ::Chef::Recipe.any_instance.stub(:service_password).with("openstack-image").
     and_return "glance-pass"
+  ::Chef::Recipe.any_instance.stub(:service_password).with("rabbitmq").
+    and_return "rabbitmq-pass"
 end
 
 def expect_runs_openstack_common_logging_recipe

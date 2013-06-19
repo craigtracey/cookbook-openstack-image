@@ -97,16 +97,18 @@ registry_client_protocol = http
 # message queue), or noop (no notifications sent, the default)
 notifier_strategy = noop
 
+<% if @rabbit_info -%>
 # Configuration options if sending notifications via rabbitmq (these are
 # the defaults)
-rabbit_host = <%= @rabbit_ipaddress %>
-rabbit_port = 5672
+rabbit_host = <%= @messaging_host %>
+rabbit_port = <%= @rabbit_info['port'] %>
 rabbit_use_ssl = false
-rabbit_userid = guest
-rabbit_password = guest
-rabbit_virtual_host = /
+rabbit_userid = <%= @rabbit_info['user'] %>
+rabbit_password = <%= @rabbit_password %>
+rabbit_virtual_host = <%= @rabbit_info['vhost'] %>
 rabbit_notification_exchange = glance
 rabbit_notification_topic = glance_notifications
+<% end -%>
 
 # Configuration options if sending notifications via Qpid (these are
 # the defaults)
